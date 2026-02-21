@@ -1,0 +1,211 @@
+basePath: /
+definitions:
+  github_com_jpp0ca_MusicMigration-API_internal_domain.MigrationRequest:
+    properties:
+      dest_provider:
+        type: string
+      dest_token:
+        type: string
+      playlist_id:
+        type: string
+      source_provider:
+        type: string
+      source_token:
+        type: string
+    required:
+    - dest_provider
+    - dest_token
+    - playlist_id
+    - source_provider
+    - source_token
+    type: object
+  github_com_jpp0ca_MusicMigration-API_internal_domain.MigrationResult:
+    properties:
+      dest_playlist_id:
+        type: string
+      failed_tracks:
+        type: integer
+      matched_tracks:
+        type: integer
+      source_playlist:
+        type: string
+      total_tracks:
+        type: integer
+      track_results:
+        items:
+          $ref: '#/definitions/github_com_jpp0ca_MusicMigration-API_internal_domain.TrackResult'
+        type: array
+    type: object
+  github_com_jpp0ca_MusicMigration-API_internal_domain.Playlist:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      owner_name:
+        type: string
+      track_count:
+        type: integer
+      tracks:
+        items:
+          $ref: '#/definitions/github_com_jpp0ca_MusicMigration-API_internal_domain.Track'
+        type: array
+    type: object
+  github_com_jpp0ca_MusicMigration-API_internal_domain.Track:
+    properties:
+      album:
+        type: string
+      artist:
+        type: string
+      external_id:
+        type: string
+      isrc:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_jpp0ca_MusicMigration-API_internal_domain.TrackResult:
+    properties:
+      confidence_score:
+        type: number
+      error:
+        type: string
+      matched:
+        $ref: '#/definitions/github_com_jpp0ca_MusicMigration-API_internal_domain.Track'
+      source:
+        $ref: '#/definitions/github_com_jpp0ca_MusicMigration-API_internal_domain.Track'
+      status:
+        $ref: '#/definitions/github_com_jpp0ca_MusicMigration-API_internal_domain.TrackStatus'
+    type: object
+  github_com_jpp0ca_MusicMigration-API_internal_domain.TrackStatus:
+    enum:
+    - matched
+    - not_found
+    - error
+    type: string
+    x-enum-varnames:
+    - TrackStatusMatched
+    - TrackStatusNotFound
+    - TrackStatusError
+  internal_adapters_http.ErrorResponse:
+    properties:
+      error:
+        type: string
+      message:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    name: MusicMigration API Support
+  description: |-
+    API for transferring playlists between streaming services (Spotify, YouTube Music).
+    Supports concurrent track matching with configurable worker pools.
+  license:
+    name: MIT
+  title: MusicMigration API
+  version: "1.0"
+paths:
+  /api/v1/migrate:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Transfers a playlist from one streaming provider to another using concurrent workers.
+        Fetches tracks from the source, matches them on the destination via ISRC or name+artist,
+        and creates a new playlist with the matched tracks. Returns detailed results with confidence scores.
+      parameters:
+      - description: Migration request with source/dest providers, tokens, and playlist
+          ID
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_jpp0ca_MusicMigration-API_internal_domain.MigrationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_jpp0ca_MusicMigration-API_internal_domain.MigrationResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_adapters_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_adapters_http.ErrorResponse'
+      summary: Migrate playlist
+      tags:
+      - migration
+  /api/v1/playlists:
+    get:
+      description: |-
+        Returns all playlists for the authenticated user on the specified streaming provider.
+        Supported providers: spotify, youtube.
+      parameters:
+      - description: Streaming provider
+        enum:
+        - spotify
+        - youtube
+        in: query
+        name: provider
+        required: true
+        type: string
+      - description: Bearer token for the streaming provider
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_jpp0ca_MusicMigration-API_internal_domain.Playlist'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_adapters_http.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/internal_adapters_http.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_adapters_http.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List user playlists
+      tags:
+      - playlists
+  /health:
+    get:
+      description: Returns the health status of the API
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check
+      tags:
+      - health
+securityDefinitions:
+  BearerAuth:
+    description: Bearer token for the streaming provider (e.g. "Bearer your_token_here")
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
