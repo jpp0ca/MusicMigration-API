@@ -1,88 +1,88 @@
 # MusicMigration-API
 
-API em Go para transferir playlists entre servicos de streaming (Spotify, YouTube Music), usando arquitetura hexagonal e concorrencia nativa do Go.
+Go API to transfer playlists between streaming services (Spotify, YouTube Music) using hexagonal architecture and Go native concurrency.
 
-## Arquitetura
+## Architecture
 
 ```
 cmd/api/                          -- Entrypoint
 internal/
-  domain/                         -- Modelos puros (Track, Playlist, etc)
+  domain/                         -- Pure models (Track, Playlist, etc.)
   ports/                          -- Interfaces (MusicProvider, MigrationService)
-  app/                            -- Logica de aplicacao (worker pool)
+  app/                            -- Application logic (worker pool)
   adapters/
-    spotify/                      -- Adapter Spotify Web API
-    youtube/                      -- Adapter YouTube Data API v3
-    http/                         -- Handler HTTP (Gin)
-  config/                         -- Configuracao via .env
+    spotify/                      -- Spotify Web API Adapter
+    youtube/                      -- YouTube Data API v3 Adapter
+    http/                         -- HTTP Handler (Gin)
+  config/                         -- Configuration via .env
 ```
 
 ## Features
 
-- **ISRC matching** -- usa codigo ISRC para matching preciso entre plataformas
-- **Confidence score** -- cada track recebe score de 0 a 1 indicando qualidade do match
-- **Worker pool** -- goroutines configuraveis para busca paralela (respeita rate limits)
-- **Extensivel** -- adicionar novo streaming = implementar interface `MusicProvider`
+- **ISRC matching** -- uses ISRC code for precise matching between platforms
+- **Confidence score** -- each track receives a score from 0 to 1 indicating match quality
+- **Worker pool** -- configurable goroutines for parallel search (respects rate limits)
+- **Extensible** -- add new streaming service = implement `MusicProvider` interface
 
 ## Setup
 
 ```bash
-# Clonar e instalar dependencias
+# Clone and install dependencies
 git clone https://github.com/jpp0ca/MusicMigration-API.git
 cd MusicMigration-API
 go mod tidy
 
-# Configurar variaveis de ambiente
+# Configure environment variables
 cp .env.example .env
 
-# Rodar
+# Run
 go run ./cmd/api
 
-# Testes
+# Tests
 go test ./... -v
 ```
 
 ## Endpoints
 
-| Metodo | Rota | Descricao |
+| Method | Route | Description |
 |--------|------|-----------|
 | `GET` | `/health` | Health check |
-| `GET` | `/api/v1/playlists?provider=spotify` | Lista playlists (requer header `Authorization: Bearer <token>`) |
-| `POST` | `/api/v1/migrate` | Migra playlist entre providers |
-| `GET` | `/swagger/index.html` | Documentacao Swagger UI |
+| `GET` | `/api/v1/playlists?provider=spotify` | List playlists (requires `Authorization: Bearer <token>` header) |
+| `POST` | `/api/v1/migrate` | Migrate playlist between providers |
+| `GET` | `/swagger/index.html` | Swagger UI documentation |
 
-### Exemplo de migracao
+### Migration example
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/migrate \
   -H "Content-Type: application/json" \
   -d '{
     "source_provider": "spotify",
-    "source_token": "seu_token_spotify",
+    "source_token": "your_spotify_token",
     "dest_provider": "youtube",
-    "dest_token": "seu_token_youtube",
+    "dest_token": "your_youtube_token",
     "playlist_id": "37i9dQZF1DXcBWIGoYBM5M"
   }'
 ```
 
-## Configuracao (.env)
+## Configuration (.env)
 
-| Variavel | Padrao | Descricao |
+| Variable | Default | Description |
 |----------|--------|-----------|
-| `PORT` | `8080` | Porta do servidor |
-| `MIGRATION_WORKERS` | `5` | Goroutines no worker pool |
-| `LOG_LEVEL` | `info` | Nivel de log |
+| `PORT` | `8080` | Server port |
+| `MIGRATION_WORKERS` | `5` | Goroutines in worker pool |
+| `LOG_LEVEL` | `info` | Log level |
 
 ---
 
-## Obtendo os tokens de acesso
+## Getting access tokens
 
 ### Spotify
 
-1. Acesse o [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) e faca login com sua conta Spotify
-2. Clique em **Create App**, preencha os campos e adicione `http://localhost:8888/callback` como Redirect URI
-3. Em **Settings**, copie o **Client ID** e o **Client Secret**
-4. Gere o token via [Authorization Code Flow](https://developer.spotify.com/documentation/web-api/tutorials/code-flow) com os seguintes scopes:
+1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and log in with your Spotify account
+2. Click on **Create App**, fill in the fields and add `http://localhost:8888/callback` as a Redirect URI
+3. In **Settings**, copy the **Client ID** and **Client Secret**
+4. Generate the token via [Authorization Code Flow](https://developer.spotify.com/documentation/web-api/tutorials/code-flow) with the following scopes:
 
 ```
 playlist-read-private
@@ -91,22 +91,22 @@ playlist-modify-private
 playlist-modify-public
 ```
 
-> Em **Development Mode**, o app acessa ate **25 usuarios de teste** cadastrados no Dashboard.
+> In **Development Mode**, the app accesses up to **25 test users** registered in the Dashboard.
 
 ---
 
 ### YouTube (Google)
 
-1. Acesse o [Google Cloud Console](https://console.cloud.google.com/) e crie um novo projeto
-2. Va em **APIs & Services > Library** e habilite a **YouTube Data API v3**
-3. Va em **APIs & Services > Credentials > Create Credentials > OAuth 2.0 Client IDs**
-   - Tipo: **Web application**
-   - Redirect URI autorizado: `http://localhost:8888/callback`
-4. Copie o **Client ID** e o **Client Secret**
-5. Use o [Google OAuth 2.0 Playground](https://developers.google.com/oauthplayground/) para gerar o token:
-   - Em **OAuth 2.0 Configuration**, informe seu Client ID e Secret
-   - Selecione o escopo `https://www.googleapis.com/auth/youtube`
-   - Clique em **Authorize APIs** e depois em **Exchange authorization code for tokens**
-   - Copie o **Access token**
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/) and create a new project
+2. Go to **APIs & Services > Library** and enable **YouTube Data API v3**
+3. Go to **APIs & Services > Credentials > Create Credentials > OAuth 2.0 Client IDs**
+   - Type: **Web application**
+   - Authorized redirect URI: `http://localhost:8888/callback`
+4. Copy the **Client ID** and **Client Secret**
+5. Use the [Google OAuth 2.0 Playground](https://developers.google.com/oauthplayground/) to generate the token:
+   - In **OAuth 2.0 Configuration**, fill in your Client ID and Secret
+   - Select the scope `https://www.googleapis.com/auth/youtube`
+   - Click on **Authorize APIs** and then on **Exchange authorization code for tokens**
+   - Copy the **Access token**
 
-> A YouTube Data API v3 tem cota de **10.000 unidades/dia** no nivel gratuito. Cada busca de musica custa 100 unidades -- para playlists grandes, ajuste `MIGRATION_WORKERS` com cuidado para nao estourar a cota.
+> The YouTube Data API v3 has a quota of **10,000 units/day** on the free tier. Each song search costs 100 units -- for large playlists, adjust `MIGRATION_WORKERS` carefully so you don't exceed the quota.
